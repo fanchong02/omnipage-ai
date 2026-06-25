@@ -36,7 +36,7 @@ export type SiteExploreReport = {
 const SKIP_NAV_PATH =
   /\/login(?:[/?#]|$)|logout|log-out|signout|sign-out|register|signup|forgot-password|manage-password/i;
 const SKIP_NAV_LABEL =
-  /logout|log out|sign out|登出|退出登录|注销|delete account|支付|purchase|checkout/i;
+  /logout|log out|sign out|登出|退出登录|注销|delete account|支付|purchase|checkout|@[a-z0-9.-]+\.[a-z]{2,}/i;
 const DOWNLOAD_EXT = /\.(pdf|zip|png|jpe?g|gif|svg|mp4|docx?|xlsx?|csv)(\?|$)/i;
 
 const DISCOVER_NAV_LINKS_SCRIPT = readFileSync(
@@ -83,6 +83,44 @@ type QueueItem = NavCandidate;
 const clickNavKey = (fromUrl: string, label: string) =>
   `click:${normalizeExploreUrl(fromUrl, fromUrl) ?? fromUrl}::${label.trim().toLowerCase()}`;
 
+const MENU_BUTTON_PATTERN = /menu|hamburger|导航|更多|sidebar|drawer|目录/i;
+
+/** 尝试展开侧栏 / 汉堡菜单，以便发现隐藏导航链接 */
+const revealHiddenNavigation = async (page: Page) => {
+  const candidates = [
+    page.getByRole('button', { name: MENU_BUTTON_PATTERN }),
+    page.locator('[aria-label*="menu" i], [aria-label*="Menu"], [class*="hamburger"], [class*="menu-btn"]'),
+  ];
+
+  for (const locator of candidates) {
+    const target = locator.first();
+    const visible = await target.isVisible({ timeout: 400 }).catch(() => false);
+    if (!visible) continue;
+    await target.click({ timeout: 3000 }).catch(() => undefined);
+    await page.waitForTimeout(600);
+    return;
+  }
+};
+
+const collectNavCandidates = async (page: Page, scopeUrl: string) => {
+  await revealHiddenNavigation(page);
+  return discoverInternalNavLinks(page, scopeUrl);
+};
+
+const ensureOnPage = async (
+  page: Page,
+  pageKey: string,
+  options: SiteExploreOptions
+) => {
+  const current = normalizeExploreUrl(page.url(), options.seedUrl);
+  if (current === pageKey) return;
+  await gotoWithAuth(page, pageKey, {
+    envName: options.envName ?? 'default',
+    account: options.account,
+    disabled: options.authDisabled,
+  });
+};
+
 export const discoverInternalNavLinks = async (
   page: Page,
   scopeUrl: string
@@ -124,7 +162,8 @@ const enqueueUnique = (
   visitedUrls: Set<string>,
   visitedClicks: Set<string>,
   items: NavCandidate[]
-) => {
+): number => {
+  const before = queue.length;
   for (const item of items) {
     if (item.kind === 'url') {
       const key = normalizeExploreUrl(item.url, item.url);
@@ -139,6 +178,7 @@ const enqueueUnique = (
     if (queue.some(q => q.kind === 'click' && clickNavKey(q.fromUrl, q.label) === key)) continue;
     queue.push(item);
   }
+  return queue.length - before;
 };
 
 const navigateToPage = async (
@@ -225,20 +265,27 @@ export const runSiteExplore = async (
     }
     visitedUrls.add(pageKey);
 
+    const preDiscover = await collectNavCandidates(page, pageKey);
+    const preAdded = enqueueUnique(queue, visitedUrls, visitedClicks, preDiscover);
+    if (preAdded > 0) {
+      console.log(`   🔗 入队前发现 ${preAdded} 个页面入口，队列 ${queue.length} 个`);
+    }
+
     const report = await runPageExplore(page, {
       ...options,
       reportDir: pageReportDir,
-      navigateBack: false,
+      navigateBack: true,
+      siteCrawl: true,
     });
+
+    await ensureOnPage(page, pageKey, options);
 
     pages.push({ url: pageKey, label: next.label, report, reportDir: pageReportDir ?? '' });
     options.onPageDone?.(pageIndex, pageKey, report);
     console.log(`   ↳ ${formatExploreSummary(report)}`);
 
-    const discovered = await discoverInternalNavLinks(page, pageKey);
-    const beforeQueue = queue.length;
-    enqueueUnique(queue, visitedUrls, visitedClicks, discovered);
-    const added = queue.length - beforeQueue;
+    const discovered = await collectNavCandidates(page, pageKey);
+    const added = enqueueUnique(queue, visitedUrls, visitedClicks, discovered);
     if (added > 0) {
       console.log(`   🔗 发现 ${added} 个待测页面入口，队列剩余 ${queue.length} 个`);
     } else if (queue.length === 0) {

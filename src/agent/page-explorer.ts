@@ -41,6 +41,8 @@ export type ExploreOptions = {
   safeMode?: boolean;
   navigateBack?: boolean;
   aiMode?: boolean;
+  /** 全站爬取模式：不点击会跳转的链接，链接由 site-crawl 队列负责 */
+  siteCrawl?: boolean;
   goal?: string;
   reportDir?: string;
   envName?: string;
@@ -124,12 +126,34 @@ const SKIP_PATTERNS = [
 
 const NAVIGATION_SKIP_PATTERNS = [/^\s*back\s*$/i, /go back/i, /返回/i, /^←/, /chevron/i];
 
-const shouldSkip = (el: DiscoveredElement, safeMode: boolean) => {
+const isOffPageNavigationElement = (el: DiscoveredElement, startUrl: string) => {
+  if (el.tag !== 'a' && el.role !== 'link' && el.role !== 'menuitem') return false;
+  if (!el.href) return el.role === 'menuitem';
+  if (/^(mailto:|tel:|javascript:)/i.test(el.href)) return true;
+  try {
+    const target = new URL(el.href, startUrl);
+    const start = new URL(startUrl);
+    if (target.origin !== start.origin) return true;
+    return target.pathname !== start.pathname || target.search !== start.search;
+  } catch {
+    return false;
+  }
+};
+
+const shouldSkip = (
+  el: DiscoveredElement,
+  safeMode: boolean,
+  siteCrawl?: boolean,
+  startUrl?: string
+) => {
   if (el.disabled) return 'disabled';
   if (el.headerBack) return headerBackSkipReason;
   if (SKIP_PATTERNS.some(p => p.test(el.name))) return 'ignored label';
   if (safeMode && shouldSkipHeaderBackTest(el.name)) return headerBackSkipReason;
   if (safeMode && NAVIGATION_SKIP_PATTERNS.some(p => p.test(el.name))) return 'navigation control';
+  if (siteCrawl && startUrl && isOffPageNavigationElement(el, startUrl)) {
+    return '全站模式：页面跳转由队列负责';
+  }
   if (el.inputType === 'file') return 'file input';
   if (el.inputType === 'hidden') return 'hidden input';
   if (el.tag === 'a' && el.href?.startsWith('mailto:')) return 'mailto link';
@@ -243,10 +267,10 @@ const ensureExploreAuth = async (
 const interactWithElement = async (
   page: Page,
   el: DiscoveredElement,
-  options: typeof DEFAULT_OPTIONS & Pick<ExploreOptions, 'envName' | 'account' | 'authDisabled'>,
+  options: typeof DEFAULT_OPTIONS & Pick<ExploreOptions, 'envName' | 'account' | 'authDisabled' | 'siteCrawl'>,
   startUrl: string
 ): Promise<ExploreActionResult> => {
-  const skipReason = shouldSkip(el, options.safeMode);
+  const skipReason = shouldSkip(el, options.safeMode, options.siteCrawl, startUrl);
   if (skipReason) {
     return { element: el, action: 'skip', success: true, reason: skipReason };
   }
@@ -328,7 +352,7 @@ const interactWithElement = async (
     await dismissKnownOverlays(page);
 
     const urlAfter = page.url();
-    if (options.navigateBack && urlAfter !== urlBeforeClick) {
+    if ((options.navigateBack || options.siteCrawl) && urlAfter !== urlBeforeClick) {
       await restorePage(page, startUrl, options);
     }
 
@@ -354,7 +378,8 @@ const executeExplorePlan = async (
   page: Page,
   plan: ExplorePlan,
   startUrl: string,
-  options: typeof DEFAULT_OPTIONS & Pick<ExploreOptions, 'envName' | 'account' | 'authDisabled'>
+  options: typeof DEFAULT_OPTIONS &
+    Pick<ExploreOptions, 'envName' | 'account' | 'authDisabled' | 'siteCrawl'>
 ): Promise<ExploreActionResult> => {
   if (plan.type === 'skip') {
     return {
@@ -456,6 +481,21 @@ const executeExplorePlan = async (
         };
       }
 
+      if (options.siteCrawl) {
+        const elements = await tagInteractiveElements(page);
+        const target = elements.find(el => el.name === plan.name);
+        if (target && isOffPageNavigationElement(target, startUrl)) {
+          return {
+            plan,
+            action: 'skip',
+            success: true,
+            reason: '全站模式：页面跳转由队列负责',
+            thinking: plan.reasoning,
+            urlAfter: page.url(),
+          };
+        }
+      }
+
       const urlBeforeClick = page.url();
       const locator = plan.role
         ? page.getByRole(plan.role as 'button' | 'link', { name: plan.name, exact: false })
@@ -465,7 +505,7 @@ const executeExplorePlan = async (
       await dismissKnownOverlays(page);
 
       const urlAfter = page.url();
-      if (options.navigateBack && urlAfter !== urlBeforeClick) {
+      if ((options.navigateBack || options.siteCrawl) && urlAfter !== urlBeforeClick) {
         await restorePage(page, startUrl, options);
       }
 
@@ -637,6 +677,7 @@ const runAiPageExplore = async (
       safeMode: resolved.safeMode,
       fillInputs: resolved.fillInputs,
       goal: options.goal,
+      siteCrawl: resolved.siteCrawl,
     });
 
     options.onThink?.(i + 1, plan);

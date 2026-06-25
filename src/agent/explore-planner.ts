@@ -221,6 +221,8 @@ export const planHeuristicExplore = (input: {
   interactives?: InteractivesAnalysis;
   history: ExploreHistoryEntry[];
   fillInputs: boolean;
+  siteCrawl?: boolean;
+  pageUrl?: string;
 }): ExplorePlan => {
   const tried = new Set(
     input.history
@@ -278,6 +280,9 @@ export const planHeuristicExplore = (input: {
     if (el?.disabled) continue;
     if (shouldSkipHeaderBackTest(item.name)) continue;
     if (item.kind === 'navigation' && shouldSkipHeaderBackTest(item.name)) continue;
+    if (input.siteCrawl && (item.kind === 'link' || item.kind === 'a' || item.kind === 'menuitem')) {
+      continue;
+    }
     if (filterPanelActive && !allFiltersTested) {
       if (queryResetPattern.test(item.name)) continue;
       if (item.kind === 'input' || item.kind === 'dropdown') continue;
@@ -368,6 +373,7 @@ export const planNextExploreAction = async (input: {
   safeMode: boolean;
   fillInputs: boolean;
   goal?: string;
+  siteCrawl?: boolean;
 }): Promise<ExplorePlan> => {
   const config = getLlmConfig();
   if (!config) {
@@ -376,6 +382,8 @@ export const planNextExploreAction = async (input: {
       interactives: input.interactives,
       history: input.history,
       fillInputs: input.fillInputs,
+      siteCrawl: input.siteCrawl,
+      pageUrl: input.url,
     });
   }
 
@@ -448,6 +456,8 @@ export const planNextExploreAction = async (input: {
       interactives: input.interactives,
       history: input.history,
       fillInputs: input.fillInputs,
+      siteCrawl: input.siteCrawl,
+      pageUrl: input.url,
     });
   }
 };

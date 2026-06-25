@@ -8,9 +8,12 @@
       if (
         tag === 'nav' ||
         tag === 'aside' ||
+        tag === 'header' ||
+        tag === 'footer' ||
         role === 'navigation' ||
         role === 'menu' ||
-        /sidebar|side-bar|sidenav|side-nav|navbar|nav-bar|menu|drawer|layout-sider|ant-menu|el-menu/.test(
+        role === 'menubar' ||
+        /sidebar|side-bar|sidenav|side-nav|navbar|nav-bar|menu|drawer|layout-sider|ant-menu|el-menu|bottom-nav|tab-bar|tabbar/.test(
           cls
         )
       ) {
@@ -32,11 +35,14 @@
       .replace(/\s+/g, ' ')
       .slice(0, 80);
 
+  const isExternalHref = href =>
+    /^(mailto:|tel:|javascript:|#)/i.test(href) || href === '';
+
   const results = [];
   const seen = new Set();
 
   const collect = (el, href, clickOnly) => {
-    if (!clickOnly && (!href || href === '#' || href.startsWith('javascript:'))) return;
+    if (!clickOnly && isExternalHref(href)) return;
 
     const label = labelOf(el);
     const key = `${clickOnly ? 'click' : href}::${label}`;
@@ -57,26 +63,29 @@
     });
   };
 
+  const hrefOf = el =>
+    el.getAttribute('href') ??
+    el.getAttribute('to') ??
+    el.getAttribute('data-path') ??
+    el.getAttribute('data-href') ??
+    el.getAttribute('data-url') ??
+    el.getAttribute('data-route') ??
+    el.href ??
+    '';
+
   document
-    .querySelectorAll('a[href], [href][role="link"], [href][role="menuitem"], [to], [data-path]')
+    .querySelectorAll(
+      'a[href], [href][role="link"], [href][role="menuitem"], [to], [data-path], [data-href], [data-url], [data-route]'
+    )
     .forEach(el => {
-      const href =
-        el.getAttribute('href') ??
-        el.getAttribute('to') ??
-        el.getAttribute('data-path') ??
-        el.href ??
-        '';
-      collect(el, href, false);
+      collect(el, hrefOf(el), false);
     });
 
   document.querySelectorAll('[role="link"], [role="menuitem"], [role="tab"]').forEach(el => {
-    const href =
-      el.getAttribute('href') ??
-      el.getAttribute('to') ??
-      el.getAttribute('data-path') ??
-      el.href ??
-      '';
-    if (href && href !== '#') return;
+    const href = hrefOf(el);
+    if (href && !isExternalHref(href)) return;
+    const label = labelOf(el);
+    if (!label) return;
     collect(el, '', true);
   });
 
