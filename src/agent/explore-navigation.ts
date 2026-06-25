@@ -26,3 +26,5 @@ export const isHeaderBackExplorePlan = (plan: {
 
 export const headerBackSkipReason =
   '标题栏返回按钮：探索时不测试；若进入二级页将由框架自动返回起始页';
+
+export const chromeSkipReason = '聚焦内容区，跳过顶栏/底栏控件';

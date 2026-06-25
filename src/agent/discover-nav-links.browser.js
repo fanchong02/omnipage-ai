@@ -8,20 +8,63 @@
       if (
         tag === 'nav' ||
         tag === 'aside' ||
-        tag === 'header' ||
-        tag === 'footer' ||
         role === 'navigation' ||
         role === 'menu' ||
         role === 'menubar' ||
-        /sidebar|side-bar|sidenav|side-nav|navbar|nav-bar|menu|drawer|layout-sider|ant-menu|el-menu|bottom-nav|tab-bar|tabbar/.test(
-          cls
-        )
+        /sidebar|side-bar|sidenav|side-nav|drawer|layout-sider|ant-menu|el-menu/.test(cls)
       ) {
         return true;
       }
       node = node.parentElement;
     }
     return false;
+  };
+
+  const isTopChrome = el => {
+    let node = el;
+    while (node) {
+      const tag = node.tagName.toLowerCase();
+      const role = node.getAttribute('role') ?? '';
+      const cls = (node.className?.toString() ?? '').toLowerCase();
+      if (
+        tag === 'header' ||
+        role === 'banner' ||
+        /header|navbar|nav-bar|title-bar|topbar|app-bar|page-header|top-bar/.test(cls)
+      ) {
+        return true;
+      }
+      node = node.parentElement;
+    }
+    return false;
+  };
+
+  const isBottomChrome = (el, rect) => {
+    let node = el;
+    while (node) {
+      const tag = node.tagName.toLowerCase();
+      const role = node.getAttribute('role') ?? '';
+      const cls = (node.className?.toString() ?? '').toLowerCase();
+      if (
+        tag === 'footer' ||
+        role === 'tablist' ||
+        /bottom-nav|tab-bar|tabbar|footer-nav|mobile-tab|dock|navbar-bottom|bottom-bar/.test(cls)
+      ) {
+        return true;
+      }
+      node = node.parentElement;
+    }
+    const role = el.getAttribute('role') ?? '';
+    if (role === 'tab' || el.closest('[role="tablist"]')) {
+      return rect.top > window.innerHeight * 0.78;
+    }
+    return false;
+  };
+
+  const resolveZone = (el, rect) => {
+    if (isTopChrome(el)) return 'top';
+    if (isBottomChrome(el, rect)) return 'bottom';
+    if (inNavArea(el)) return 'nav';
+    return 'content';
   };
 
   const labelOf = el =>
@@ -55,11 +98,13 @@
     if (rect.width < 2 || rect.height < 2) return;
     if (el.getAttribute('aria-disabled') === 'true' || el.disabled) return;
 
+    const zone = resolveZone(el, rect);
     results.push({
       href: href || label,
       label: label || href,
       inNav: inNavArea(el),
       clickOnly,
+      zone,
     });
   };
 
@@ -81,11 +126,13 @@
       collect(el, hrefOf(el), false);
     });
 
-  document.querySelectorAll('[role="link"], [role="menuitem"], [role="tab"]').forEach(el => {
+  document.querySelectorAll('[role="link"], [role="menuitem"]').forEach(el => {
     const href = hrefOf(el);
     if (href && !isExternalHref(href)) return;
     const label = labelOf(el);
     if (!label) return;
+    const role = el.getAttribute('role') ?? '';
+    if (role === 'menuitem' && !inNavArea(el)) return;
     collect(el, '', true);
   });
 

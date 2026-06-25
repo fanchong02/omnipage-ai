@@ -2,7 +2,7 @@ import { existsSync, readFileSync } from 'node:fs';
 import { z } from 'zod';
 import { chatCompletion, getLlmConfig } from './llm-client.js';
 import type { ExploreElementInfo } from './explore-planner.js';
-import { shouldSkipHeaderBackTest, headerBackSkipReason } from './explore-navigation.js';
+import { shouldSkipHeaderBackTest, headerBackSkipReason, chromeSkipReason } from './explore-navigation.js';
 
 export const InteractiveKindSchema = z.enum([
   'button',
@@ -132,6 +132,7 @@ export const buildInteractivesFromDom = (elements: ExploreElementInfo[]): Intera
     const kind = inferKindFromDom(el);
     const label = el.name || el.inputType || el.tag;
     const skipBack = kind === 'navigation' && shouldSkipHeaderBackTest(label);
+    const skipChrome = Boolean(el.inChrome);
     const inFilterArea =
       hasQueryButton &&
       (kind === 'input' || kind === 'dropdown') &&
@@ -141,8 +142,10 @@ export const buildInteractivesFromDom = (elements: ExploreElementInfo[]): Intera
       label,
       location: inFilterArea ? '筛选区' : undefined,
       disabled: el.disabled,
-      suggestedAction: el.disabled || skipBack ? 'skip' : inferSuggestedAction(kind, label),
-      notes: skipBack
+      suggestedAction: el.disabled || skipBack || skipChrome ? 'skip' : inferSuggestedAction(kind, label),
+      notes: skipChrome
+        ? chromeSkipReason
+        : skipBack
         ? headerBackSkipReason
         : `[${el.role || el.tag}]${el.inputType ? ` type=${el.inputType}` : ''}`,
     };

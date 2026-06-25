@@ -8,6 +8,7 @@ import {
 } from './interactive-analyzer.js';
 import {
   headerBackSkipReason,
+  chromeSkipReason,
   isHeaderBackExplorePlan,
   shouldSkipHeaderBackTest,
 } from './explore-navigation.js';
@@ -20,6 +21,7 @@ export type ExploreElementInfo = {
   tag: string;
   inputType?: string;
   disabled: boolean;
+  inChrome?: boolean;
 };
 
 export const ExplorePlanSchema = z.discriminatedUnion('type', [
@@ -278,8 +280,10 @@ export const planHeuristicExplore = (input: {
   for (const item of candidates) {
     const el = input.elements.find(e => e.name === item.name);
     if (el?.disabled) continue;
+    if (el?.inChrome) continue;
     if (shouldSkipHeaderBackTest(item.name)) continue;
     if (item.kind === 'navigation' && shouldSkipHeaderBackTest(item.name)) continue;
+    if (item.kind === 'tab') continue;
     if (input.siteCrawl && (item.kind === 'link' || item.kind === 'a' || item.kind === 'menuitem')) {
       continue;
     }

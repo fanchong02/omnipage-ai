@@ -9,7 +9,7 @@
     /go\s*back/i.test(label) ||
     /^←/.test(label);
 
-  const isInHeader = el => {
+  const isTopChrome = el => {
     let node = el;
     while (node) {
       const tag = node.tagName.toLowerCase();
@@ -18,7 +18,7 @@
       if (
         tag === 'header' ||
         role === 'banner' ||
-        /header|navbar|nav-bar|title-bar|topbar|app-bar|page-header/.test(cls)
+        /header|navbar|nav-bar|title-bar|topbar|app-bar|page-header|top-bar/.test(cls)
       ) {
         return true;
       }
@@ -27,10 +27,32 @@
     return false;
   };
 
+  const isBottomChrome = (el, rect) => {
+    let node = el;
+    while (node) {
+      const tag = node.tagName.toLowerCase();
+      const role = node.getAttribute('role') ?? '';
+      const cls = (node.className?.toString() ?? '').toLowerCase();
+      if (
+        tag === 'footer' ||
+        role === 'tablist' ||
+        /bottom-nav|tab-bar|tabbar|footer-nav|mobile-tab|dock|navbar-bottom|bottom-bar/.test(cls)
+      ) {
+        return true;
+      }
+      node = node.parentElement;
+    }
+    const role = el.getAttribute('role') ?? '';
+    if (role === 'tab' || el.closest('[role="tablist"]')) {
+      return rect.top > window.innerHeight * 0.78;
+    }
+    return rect.top > window.innerHeight * 0.88;
+  };
+
   const isHeaderBackButton = (el, label, rect) => {
     const tag = el.tagName.toLowerCase();
     const role = el.getAttribute('role') ?? '';
-    const inHeader = isInHeader(el);
+    const inHeader = isTopChrome(el);
     const topArea = rect.top < 88;
 
     if (backLabel(label) && (inHeader || topArea)) return true;
@@ -74,6 +96,7 @@
     if (seen.has(dedupeKey)) return;
     seen.add(dedupeKey);
 
+    const inChrome = isTopChrome(el) || isBottomChrome(el, rect);
     const id = `el-${index}`;
     el.setAttribute('data-qa-explore-id', id);
     results.push({
@@ -88,6 +111,7 @@
         el.getAttribute('aria-disabled') === 'true' ||
         el.getAttribute('disabled') !== null,
       headerBack: isHeaderBackButton(el, name, rect),
+      inChrome,
     });
   });
 

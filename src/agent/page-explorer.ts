@@ -30,6 +30,7 @@ import { executeFilterTest } from './filter-explore.js';
 import { writeExploreHtmlReport } from '../reporters/explore-html-report.js';
 import {
   headerBackSkipReason,
+  chromeSkipReason,
   isHeaderBackExplorePlan,
   shouldSkipHeaderBackTest,
 } from './explore-navigation.js';
@@ -61,6 +62,8 @@ export type DiscoveredElement = {
   href?: string;
   disabled: boolean;
   headerBack?: boolean;
+  /** 位于顶部标题栏或底部 Tab 等页面框架区域 */
+  inChrome?: boolean;
 };
 
 export type ExploreActionResult = {
@@ -148,6 +151,7 @@ const shouldSkip = (
 ) => {
   if (el.disabled) return 'disabled';
   if (el.headerBack) return headerBackSkipReason;
+  if (el.inChrome) return chromeSkipReason;
   if (SKIP_PATTERNS.some(p => p.test(el.name))) return 'ignored label';
   if (safeMode && shouldSkipHeaderBackTest(el.name)) return headerBackSkipReason;
   if (safeMode && NAVIGATION_SKIP_PATTERNS.some(p => p.test(el.name))) return 'navigation control';
@@ -484,6 +488,16 @@ const executeExplorePlan = async (
       if (options.siteCrawl) {
         const elements = await tagInteractiveElements(page);
         const target = elements.find(el => el.name === plan.name);
+        if (target?.inChrome) {
+          return {
+            plan,
+            action: 'skip',
+            success: true,
+            reason: chromeSkipReason,
+            thinking: plan.reasoning,
+            urlAfter: page.url(),
+          };
+        }
         if (target && isOffPageNavigationElement(target, startUrl)) {
           return {
             plan,

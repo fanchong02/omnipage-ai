@@ -37,7 +37,18 @@ const SKIP_NAV_PATH =
   /\/login(?:[/?#]|$)|logout|log-out|signout|sign-out|register|signup|forgot-password|manage-password/i;
 const SKIP_NAV_LABEL =
   /logout|log out|sign out|登出|退出登录|注销|delete account|支付|purchase|checkout|@[a-z0-9.-]+\.[a-z]{2,}/i;
+/** 无 URL 的点击项：多为上传/编辑等页内操作，不作为全站页面入口 */
+const SKIP_CLICK_NAV_LABEL =
+  /add files|upload|download|import|export|delete|remove|edit|share|copy|paste|attach|添加|上传|导入|导出|删除|分享|复制|附件/i;
 const DOWNLOAD_EXT = /\.(pdf|zip|png|jpe?g|gif|svg|mp4|docx?|xlsx?|csv)(\?|$)/i;
+
+/** 全站队列优先级：内容区优先，顶栏/底栏最后（仅用于发现 URL，探索时不点击） */
+const ZONE_PRIORITY: Record<string, number> = {
+  content: 0,
+  nav: 1,
+  top: 4,
+  bottom: 4,
+};
 
 const DISCOVER_NAV_LINKS_SCRIPT = readFileSync(
   join(dirname(fileURLToPath(import.meta.url)), 'discover-nav-links.browser.js'),
@@ -133,11 +144,13 @@ export const discoverInternalNavLinks = async (
   for (const item of raw) {
     if (item.clickOnly) {
       if (SKIP_NAV_LABEL.test(item.label)) continue;
+      if (SKIP_CLICK_NAV_LABEL.test(item.label)) continue;
+      if (item.zone !== 'content') continue;
       candidates.push({
         kind: 'click',
         label: item.label,
         fromUrl: currentKey,
-        priority: item.inNav ? 0 : 1,
+        priority: ZONE_PRIORITY.content,
       });
       continue;
     }
@@ -145,11 +158,12 @@ export const discoverInternalNavLinks = async (
     const absolute = normalizeExploreUrl(item.href, scopeUrl);
     if (!absolute) continue;
     if (shouldSkipNavTarget(absolute, item.label, scopeUrl)) continue;
+    const zone = item.zone ?? 'content';
     candidates.push({
       kind: 'url',
       url: absolute,
       label: item.label,
-      priority: item.inNav ? 0 : 1,
+      priority: ZONE_PRIORITY[zone] ?? 1,
     });
   }
 
@@ -181,6 +195,23 @@ const enqueueUnique = (
   return queue.length - before;
 };
 
+const clickNavLocator = (page: Page, label: string) =>
+  page
+    .getByRole('link', { name: label, exact: false })
+    .or(page.getByRole('button', { name: label, exact: false }))
+    .or(page.getByRole('menuitem', { name: label, exact: false }))
+    .or(page.getByRole('tab', { name: label, exact: false }));
+
+const clickNavTarget = async (page: Page, label: string) => {
+  const target = clickNavLocator(page, label).first();
+  await target.scrollIntoViewIfNeeded({ timeout: 5000 }).catch(() => undefined);
+  try {
+    await target.click({ timeout: 8000 });
+  } catch {
+    await target.click({ timeout: 5000, force: true });
+  }
+};
+
 const navigateToPage = async (
   page: Page,
   item: QueueItem,
@@ -195,26 +226,27 @@ const navigateToPage = async (
     return normalizeExploreUrl(page.url(), options.seedUrl);
   }
 
-  const fromKey = normalizeExploreUrl(item.fromUrl, options.seedUrl);
-  const currentKey = normalizeExploreUrl(page.url(), options.seedUrl);
-  if (fromKey && currentKey !== fromKey) {
-    await gotoWithAuth(page, item.fromUrl, {
-      envName: options.envName ?? 'default',
-      account: options.account,
-      disabled: options.authDisabled,
-    });
+  try {
+    const fromKey = normalizeExploreUrl(item.fromUrl, options.seedUrl);
+    const currentKey = normalizeExploreUrl(page.url(), options.seedUrl);
+    if (fromKey && currentKey !== fromKey) {
+      await gotoWithAuth(page, item.fromUrl, {
+        envName: options.envName ?? 'default',
+        account: options.account,
+        disabled: options.authDisabled,
+      });
+    }
+
+    await revealHiddenNavigation(page);
+    await clickNavTarget(page, item.label);
+    await page.waitForLoadState('domcontentloaded').catch(() => undefined);
+    await page.waitForTimeout(800);
+    return normalizeExploreUrl(page.url(), options.seedUrl);
+  } catch (err) {
+    const message = err instanceof Error ? err.message : String(err);
+    console.warn(`   ↳ 导航失败，跳过「${item.label}」: ${message.split('\n')[0]}`);
+    return null;
   }
-
-  const locator = page
-    .getByRole('link', { name: item.label, exact: false })
-    .or(page.getByRole('menuitem', { name: item.label, exact: false }))
-    .or(page.getByRole('tab', { name: item.label, exact: false }))
-    .or(page.getByText(item.label, { exact: false }));
-
-  await locator.first().click({ timeout: 10_000 });
-  await page.waitForLoadState('domcontentloaded').catch(() => undefined);
-  await page.waitForTimeout(800);
-  return normalizeExploreUrl(page.url(), options.seedUrl);
 };
 
 export const runSiteExplore = async (
