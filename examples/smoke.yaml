@@ -1,0 +1,8 @@
+name: example-smoke
+description: 示例场景 — 打开页面并检查可见元素
+env: default
+viewport: mobile
+autoLogin: false
+steps:
+  - goto: /
+  - assertVisible: Welcome

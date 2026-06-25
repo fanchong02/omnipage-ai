@@ -1,0 +1,37 @@
+{
+  "name": "omnipage-ai",
+  "version": "0.1.0",
+  "private": true,
+  "description": "Omnipage AI — AI-powered testing for any H5 / Web page (Playwright + Agent)",
+  "type": "module",
+  "scripts": {
+    "qa": "tsx src/cli.ts explore",
+    "start": "tsx src/cli.ts explore",
+    "explore": "tsx src/cli.ts explore",
+    "scan": "tsx src/cli.ts scan",
+    "scan:ci": "HEADLESS=true tsx src/cli.ts scan",
+    "heuristic": "tsx src/cli.ts scan",
+    "heuristic:ci": "HEADLESS=true tsx src/cli.ts scan",
+    "scan:all": "tsx src/cli.ts scan",
+    "scan:all:ci": "HEADLESS=true tsx src/cli.ts scan",
+    "run": "tsx src/cli.ts run",
+    "agent": "tsx src/cli.ts agent",
+    "autogen": "tsx src/cli.ts autogen",
+    "regression": "tsx src/cli.ts regression",
+    "regression:ci": "HEADLESS=true tsx src/cli.ts regression",
+    "aggregate": "tsx src/cli.ts aggregate",
+    "visual-review": "tsx src/cli.ts visual-review",
+    "test:install": "playwright install chromium"
+  },
+  "dependencies": {
+    "yaml": "^2.8.2",
+    "zod": "^4.3.6"
+  },
+  "devDependencies": {
+    "@playwright/test": "^1.61.0",
+    "@types/node": "^20.19.39",
+    "dotenv": "^17.4.2",
+    "tsx": "^4.22.4",
+    "typescript": "^5.9.3"
+  }
+}

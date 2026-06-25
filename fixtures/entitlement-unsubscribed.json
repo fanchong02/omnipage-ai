@@ -1,0 +1,11 @@
+{
+  "code": 200,
+  "data": {
+    "isSubscribed": false,
+    "entitlementState": "none",
+    "entitlementType": "free",
+    "expired": false,
+    "free": true,
+    "trial": false
+  }
+}

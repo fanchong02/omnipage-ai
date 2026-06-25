@@ -1,0 +1,21 @@
+node_modules/
+dist/
+reports/
+.env
+.env.local
+.env.*.local
+config/accounts.yaml
+playwright-report/
+test-results/
+*.log
+
+# 本地 / 系统文件
+.DS_Store
+Thumbs.db
+.playwright-browsers/
+
+# IDE
+.idea/
+.vscode/
+*.swp
+*.swo

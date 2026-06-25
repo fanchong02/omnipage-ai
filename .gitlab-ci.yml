@@ -1,0 +1,28 @@
+# Omnipage AI CI — 需配置 CI 变量 E2E_TARGET_URL
+
+stages:
+  - test
+
+variables:
+  HEADLESS: 'true'
+
+qa-explore:
+  stage: test
+  image: mcr.microsoft.com/playwright:v1.49.1-noble
+  rules:
+    - if: $CI_PIPELINE_SOURCE == "schedule"
+    - if: $CI_PIPELINE_SOURCE == "web"
+    - if: $CI_COMMIT_BRANCH == "main" || $CI_COMMIT_BRANCH == "develop"
+  before_script:
+    - corepack enable
+    - pnpm install --frozen-lockfile
+    - pnpm exec playwright install chromium
+  script:
+    - test -n "$E2E_TARGET_URL" || (echo "Set CI variable E2E_TARGET_URL" && exit 1)
+    - pnpm scan --url "$E2E_TARGET_URL" --max-actions 8 --open-report false
+  artifacts:
+    when: always
+    paths:
+      - reports/
+    expire_in: 7 days
+  allow_failure: true

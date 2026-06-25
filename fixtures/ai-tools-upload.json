@@ -1,0 +1,14 @@
+{
+  "code": 200,
+  "data": {
+    "id": "file-e2e-001",
+    "type": "image_url",
+    "value": "https://cdn.example.com/e2e/test-image.png",
+    "status": "done",
+    "metadata": {
+      "filename": "test-image.png",
+      "content_type": "image/png",
+      "size_bytes": 68
+    }
+  }
+}

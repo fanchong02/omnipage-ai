@@ -1,0 +1,28 @@
+{
+  "code": 200,
+  "data": {
+    "conversationId": "conv-e2e-001",
+    "completion": {
+      "completionId": "comp-e2e-001",
+      "createdAt": 1700000000000,
+      "updatedAt": 1700000001000,
+      "message": {
+        "text": "Hello, this is an E2E test message."
+      },
+      "model": {
+        "code": "gpt-4o-mini",
+        "displayName": "GPT-4o Mini"
+      },
+      "responses": [
+        {
+          "responseId": "resp-e2e-001",
+          "status": "done",
+          "updatedAt": 1700000002000,
+          "message": {
+            "text": "This is a mock AI assistant reply for E2E testing."
+          }
+        }
+      ]
+    }
+  }
+}

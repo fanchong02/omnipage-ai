@@ -1,0 +1,31 @@
+{
+  "code": 200,
+  "data": {
+    "items": [
+      {
+        "id": "conv-e2e-001",
+        "title": "Hello E2E",
+        "createdAt": "1700000000000",
+        "updatedAt": "1700000002000",
+        "tool": "chatgpt",
+        "completions": [
+          {
+            "id": "comp-e2e-001",
+            "message": {
+              "text": "Hello E2E test prompt"
+            },
+            "model": {
+              "code": "gpt-4o-mini",
+              "name": "GPT-4o Mini",
+              "icon": "",
+              "type": "chat"
+            }
+          }
+        ]
+      }
+    ],
+    "page": 1,
+    "page_size": 20,
+    "total": 1
+  }
+}

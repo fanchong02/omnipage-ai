@@ -1,0 +1,21 @@
+# 测试账号配置（复制为 accounts.yaml 后填写真实密码）
+# cp config/accounts.example.yaml config/accounts.yaml
+#
+# ⚠️ accounts.yaml 已在 .gitignore 中，请勿提交真实账号/密码到 Git。
+
+defaults:
+  account: e2e
+
+accounts:
+  e2e:
+    description: 默认 E2E 测试账号
+    email: test@example.com
+    password: your-password-here
+    displayName: Test User
+    env: [default, local]
+    # 可选：登录页与表单字段（不填则使用通用匹配）
+    # loginUrl: /login
+    # fields:
+    #   email: Email    # 可选：账号框文案（不填则自动匹配 账号/用户名/邮箱 等）
+    #   password: Password
+    #   submit: Sign in

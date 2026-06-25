@@ -1,0 +1,15 @@
+{
+  "code": 200,
+  "data": {
+    "isSubscribed": true,
+    "entitlementState": "active",
+    "entitlementType": "pro",
+    "expired": false,
+    "free": false,
+    "trial": false,
+    "features": {
+      "ai_tools": {},
+      "prompt_library": {}
+    }
+  }
+}

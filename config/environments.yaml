@@ -1,0 +1,7 @@
+default:
+  baseURL: http://localhost:3000
+  apiHosts: []
+
+local:
+  baseURL: http://localhost:3000
+  apiHosts: []

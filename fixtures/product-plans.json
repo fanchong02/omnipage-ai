@@ -1,0 +1,37 @@
+{
+  "code": 200,
+  "data": {
+    "plans": [
+      {
+        "id": 101,
+        "title": "1-week plan",
+        "interval": "week",
+        "intervalCount": 1,
+        "price": 6.99,
+        "originalPrice": 13.98,
+        "currency": "USD",
+        "isPopular": false
+      },
+      {
+        "id": 102,
+        "title": "4-week plan",
+        "interval": "week",
+        "intervalCount": 4,
+        "price": 19.99,
+        "originalPrice": 39.98,
+        "currency": "USD",
+        "isPopular": true
+      },
+      {
+        "id": 103,
+        "title": "12-week plan",
+        "interval": "week",
+        "intervalCount": 12,
+        "price": 39.99,
+        "originalPrice": 79.98,
+        "currency": "USD",
+        "isPopular": false
+      }
+    ]
+  }
+}

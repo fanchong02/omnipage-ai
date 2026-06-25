@@ -1,0 +1,16 @@
+{
+  "code": 200,
+  "data": {
+    "accessMode": "unlimited",
+    "usage": {
+      "limit": null,
+      "remaining": null,
+      "models": {
+        "gpt-4o-mini": {
+          "displayName": "GPT-4o Mini",
+          "requests": 100
+        }
+      }
+    }
+  }
+}
